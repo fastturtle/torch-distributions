@@ -1,0 +1,67 @@
+language: c
+compiler:
+  - gcc
+  # - clang (commented out because distributions/tests/testMultivariateGaussian.lua was seg-faulting)
+cache:
+  directories:
+  - $HOME/OpenBlasInstall
+sudo: false
+env:
+  - TORCH_LUA_VERSION=LUAJIT21
+addons:
+  apt:
+    packages:
+    - cmake
+    - gfortran
+    - gcc-multilib
+    - gfortran-multilib
+    - liblapack-dev
+    - build-essential
+    - gcc 
+    - g++ 
+    - curl
+    - cmake 
+    - libreadline-dev 
+    - git-core 
+    - libqt4-core 
+    - libqt4-gui
+    - libqt4-dev 
+    - libjpeg-dev 
+    - libpng-dev 
+    - ncurses-dev
+    - imagemagick 
+    - libzmq3-dev 
+    - gfortran
+    - unzip 
+    - gnuplot
+    - gnuplot-x11 
+before_script:
+- export ROOT_TRAVIS_DIR=$(pwd)
+- export INSTALL_PREFIX=~/torch/install
+-  ls $HOME/OpenBlasInstall/lib || (cd /tmp/ && git clone https://github.com/xianyi/OpenBLAS.git -b master && cd OpenBLAS && (make NO_AFFINITY=1 -j$(getconf _NPROCESSORS_ONLN) 2>/dev/null >/dev/null) && make PREFIX=$HOME/OpenBlasInstall install)
+- git clone https://github.com/torch/distro.git ~/torch --recursive
+- cd ~/torch && git submodule update --init --recursive
+- mkdir build && cd build
+- export CMAKE_LIBRARY_PATH=$HOME/OpenBlasInstall/include:$HOME/OpenBlasInstall/lib:$CMAKE_LIBRARY_PATH
+- cmake .. -DCMAKE_INSTALL_PREFIX="${INSTALL_PREFIX}" -DCMAKE_BUILD_TYPE=Release -DWITH_${TORCH_LUA_VERSION}=ON
+- make && make install
+- cd $ROOT_TRAVIS_DIR
+- export LD_LIBRARY_PATH=${INSTALL_PREFIX}/lib:$LD_LIBRARY_PATH
+script:
+- ${INSTALL_PREFIX}/bin/luarocks make rocks/distributions-0-0.rockspec
+- export PATH=${INSTALL_PREFIX}/bin:$PATH
+- export TESTLUA=$(which luajit lua | head -n 1)
+- ${TESTLUA} -ltorch -ltotem -ldistributions distributions/tests/testCategorical.lua
+- ${TESTLUA} -ltorch -ltotem -ldistributions distributions/tests/testCauchy.lua
+- ${TESTLUA} -ltorch -ltotem -ldistributions distributions/tests/testChi2.lua
+- ${TESTLUA} -ltorch -ltotem -ldistributions distributions/tests/testChi2Test.lua
+- ${TESTLUA} -ltorch -ltotem -ldistributions distributions/tests/testDirichlet.lua
+- ${TESTLUA} -ltorch -ltotem -ldistributions distributions/tests/testGamma.lua
+- ${TESTLUA} -ltorch -ltotem -ldistributions distributions/tests/testGaussian.lua
+- ${TESTLUA} -ltorch -ltotem -ldistributions distributions/tests/testKSTest.lua
+- ${TESTLUA} -ltorch -ltotem -ldistributions distributions/tests/testLaplace.lua
+- ${TESTLUA} -ltorch -ltotem -ldistributions distributions/tests/testMultivariateGaussian.lua
+- ${TESTLUA} -ltorch -ltotem -ldistributions distributions/tests/testMultivariateValues.lua
+- ${TESTLUA} -ltorch -ltotem -ldistributions distributions/tests/testNormalWishart.lua
+- ${TESTLUA} -ltorch -ltotem -ldistributions distributions/tests/testPoisson.lua
+- ${TESTLUA} -ltorch -ltotem -ldistributions distributions/tests/testWishart.lua
